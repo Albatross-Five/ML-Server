@@ -57,4 +57,4 @@ if __name__ == "__main__":
     import uvicorn
     
     # uvicorn을 사용하여 FastAPI 애플리케이션 실행
-    uvicorn.run(app, host="0.0.0.0", port=8080)
+    uvicorn.run(app, host="0.0.0.0", port=8000)
