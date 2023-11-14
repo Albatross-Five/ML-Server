@@ -1,24 +1,19 @@
-from fastapi import FastAPI, File, UploadFile
+from fastapi import APIRouter, FastAPI, File, UploadFile
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
-import subprocess
+import shutil
 
-app = FastAPI()
-
-origins = ["*"]
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=origins,
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+from test_deepface import ImageVerifier
 
 # 다른 서버의 API 엔드포인트
 other_server_api_url = "/member/recognition"
 
+router = APIRouter(
+    responses={404: {"description": "Not found"}}
+)
+
 # 멀티파트 데이터를 받아오는 엔드포인트
-@app.post(other_server_api_url)
+@router.post(other_server_api_url)
 async def recognize_faces(
     profile1: UploadFile = File(...),
     profile2: UploadFile = File(...),
@@ -26,6 +21,7 @@ async def recognize_faces(
     profile4: UploadFile = File(...),
     current: UploadFile = File(...)
 ):
+    
     try:
         # 멀티파트 데이터를 FormData로 변환
         data = {
@@ -36,26 +32,24 @@ async def recognize_faces(
             "current": ("current.jpg", current.file),
         }
 
-        # 다른 서버로 POST 요청을 보냄
-        response = subprocess.run(["/home/hagima-ml/bin/miniconda3/bin/python3", "/home/hagima-ml/ML-Service/deep.py"], capture_output=True, text=True, input=str(data))
+        # 파일을 임시 디렉토리에 저장
+        temp_dir = "/home/hagima-ml/ML-Server/DeepfaceImgs"
+        image_paths = []
+        for key, (filename, file) in data.items():
+            file_path = f"{temp_dir}/{filename}"
+            with open(file_path, "wb") as dest:
+                shutil.copyfileobj(file, dest)
+            image_paths.append(file_path)
 
-        # deep.py의 실행 결과 확인
-        deep_result = response.stdout.strip()
-        print("result: " + deep_result);
+        verifier = ImageVerifier(image_paths)
+        verification_results = verifier.verify_images()
 
-        # 얼굴 인식 결과에 따라 응답 처리
-        if deep_result in ("-1", "0", "1", "2", "3"):
-            response_data = {"status": 200, "message": "얼굴 식별에 성공하였습니다.", "data": {"index": int(deep_result)}}
-        else:
-            response_data = {"status": 200, "message": "얼굴 식별에 실패하였습니다.", "data": {"index": -1}}
+        # 얼굴 인식 결과에 따라 응답 처리            
+        # 성공
+        min_index = verification_results.index(min(verification_results))
+        response_data = {"status": 200, "message": "얼굴 식별에 성공하였습니다.", "data": {"index": int(min_index)}, "test": verification_results}
             
         return JSONResponse(content=response_data, status_code=200)
     except Exception as e:
         # 예외 처리: 에러 발생 시
         return JSONResponse(content={"error": f"Error: {str(e)}"}, status_code=500)
-    
-if __name__ == "__main__":
-    import uvicorn
-    
-    # uvicorn을 사용하여 FastAPI 애플리케이션 실행
-    uvicorn.run(app, host="0.0.0.0", port=8080)
