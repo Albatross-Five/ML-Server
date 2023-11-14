@@ -42,14 +42,14 @@ async def recognize_faces(
         # deep.py의 실행 결과 확인
         deep_result = response.stdout.strip()
         print("result: " + deep_result);
-        
+
         # 얼굴 인식 결과에 따라 응답 처리
         if deep_result in ("-1", "0", "1", "2", "3"):
             response_data = {"status": 200, "message": "얼굴 식별에 성공하였습니다.", "data": {"index": int(deep_result)}}
         else:
             response_data = {"status": 200, "message": "얼굴 식별에 실패하였습니다.", "data": {"index": -1}}
             
-            return JSONResponse(content=response_data, status_code=200)
+        return JSONResponse(content=response_data, status_code=200)
     except Exception as e:
         # 예외 처리: 에러 발생 시
         return JSONResponse(content={"error": f"Error: {str(e)}"}, status_code=500)
