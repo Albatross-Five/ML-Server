@@ -37,11 +37,12 @@ async def recognize_faces(
         }
 
         # 다른 서버로 POST 요청을 보냄
-        response = subprocess.run(["python", "deep.py"], capture_output=True, text=True, input=str(data))
+        response = subprocess.run(["/home/hagima-ml/bin/miniconda3/bin/python3", "/home/hagima-ml/ML-Service/deep.py"], capture_output=True, text=True, input=str(data))
 
         # deep.py의 실행 결과 확인
         deep_result = response.stdout.strip()
-
+        print("result: " + deep_result);
+        
         # 얼굴 인식 결과에 따라 응답 처리
         if deep_result in ("-1", "0", "1", "2", "3"):
             response_data = {"status": 200, "message": "얼굴 식별에 성공하였습니다.", "data": {"index": int(deep_result)}}
